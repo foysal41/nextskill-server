@@ -2,15 +2,24 @@ require("dotenv").config();
 
 const cors = require("cors");
 const express = require("express");
+const { ApifyClient } = require("apify-client");
 const { MongoClient, ServerApiVersion } = require("mongodb");
 const dns = require("dns");
 const Stripe = require("stripe");
 
 const app = express();
+
 const stripe = new Stripe(
   process.env.STRIPE_SECRET_KEY
 );
+
+const apifyClient = new ApifyClient({
+  token: process.env.APIFY_API_TOKEN,
+});
+
+
 const port = 5000;
+
 
 
 
@@ -182,6 +191,136 @@ app.get("/api/filtercourses", async (req, res) => {
   }
 });
 
+
+// =====================================
+// LinkedIn Job Search - Apify
+// =====================================
+
+app.post("/api/jobs/search", async (req, res) => {
+  try {
+    const { keyword, location, workArrangement, experience, employmentType, hasSalary, } = req.body;
+    
+
+    // ---------------------------------
+    // 1. Validate Job Keyword
+    // ---------------------------------
+
+    if (!keyword || !keyword.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Job keyword is required",
+      });
+    }
+
+    // ---------------------------------
+    // 2. Prepare Apify Input
+    // ---------------------------------
+
+    const input = {
+      timeRange: "7d",
+      titleSearch: [keyword.trim()],
+
+      ...(location?.trim()
+        ? {
+            locationSearch: [location.trim()],
+          }
+        : {}),
+
+      ...(workArrangement?.length
+        ? {
+            aiWorkArrangementFilter:
+              workArrangement,
+          }
+        : {}),
+
+      ...(experience
+        ? {
+            aiExperienceLevelFilter: [
+              experience,
+            ],
+          }
+        : {}),
+
+      ...(employmentType
+        ? {
+            aiEmploymentTypeFilter: [
+              employmentType,
+            ],
+          }
+        : {}),
+
+      ...(hasSalary === true
+        ? {
+            hasSalary: true,
+          }
+        : {}),
+    };
+
+    // console.log(
+    //   "===================================="
+    // );
+
+    // console.log("Apify Job Search Input:");
+    // console.log(input);
+
+    // console.log(
+    //   "===================================="
+    // );
+
+    // ---------------------------------
+    // 3. Run Apify Actor
+    // ---------------------------------
+
+    const run = await apifyClient
+      .actor("vIGxjRrHqDTPuE6M4")
+      .call(input);
+
+    console.log("Apify Run Completed:");
+    console.log(run.id);
+
+    // ---------------------------------
+    // 4. Get Dataset Results
+    // ---------------------------------
+
+    const { items } = await apifyClient
+      .dataset(run.defaultDatasetId)
+      .listItems();
+
+    // console.log(
+    //   `Jobs Found: ${items.length}`
+    // );
+
+    // ---------------------------------
+    // 5. Send Results to Frontend
+    // ---------------------------------
+
+    return res.status(200).json({
+      success: true,
+      count: items.length,
+      jobs: items,
+    });
+  } catch (error) {
+    console.error(
+      "===================================="
+    );
+
+    console.error(
+      "Apify Job Search Error:"
+    );
+
+    console.error(error);
+
+    console.error(
+      "===================================="
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to search jobs",
+      error: error.message,
+    });
+  }
+});
 
 
 
@@ -432,6 +571,12 @@ app.post(
     }
   }
 );
+
+
+
+
+
+
 
 // =====================================
 // ERROR HANDLER
