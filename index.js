@@ -1,5 +1,5 @@
 require("dotenv").config();
-
+const connectDB = require("./src/config/db");
 const cors = require("cors");
 const express = require("express");
 const { ApifyClient } = require("apify-client");
@@ -28,48 +28,7 @@ app.use(express.json());
 
 dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
-// =====================================
-// MongoDB
-// =====================================
 
-const uri = process.env.MONGO_DB_URI;
-
-if (!uri) {
-  console.error("MONGO_DB_URI is missing");
-}
-
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-});
-
-let courseCollections;
-
-
-// =====================================
-// MongoDB Connection
-// =====================================
-
-async function connectDB() {
-  if (courseCollections) {
-    return courseCollections;
-  }
-
-  await client.connect();
-
-  const database = client.db("nextSkill_Course_db");
-
-  courseCollections = database.collection("courses");
-
-  await client.db("admin").command({ ping: 1 });
-
-  console.log("MongoDB connected successfully!");
-
-  return courseCollections;
-}
 
 
 // =====================================
@@ -81,29 +40,6 @@ app.get("/", (req, res) => {
 });
 
 
-// =====================================
-// GET ALL COURSES
-// =====================================
-
-app.get("/api/courses", async (req, res) => {
-  try {
-    const courses = await connectDB();
-
-    const result = await courses.find().toArray();
-
-    // console.log("Courses fetched:", result.length);
-
-    res.status(200).json(result);
-  } catch (error) {
-    console.error("GET /api/courses error:", error);
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch courses",
-      error: error.message,
-    });
-  }
-});
 
 
 // =====================================
