@@ -1,14 +1,18 @@
+const express = require("express");
+const connectDB = require("../config/db");
+
+const router = express.Router();
+
 // =====================================
 // GET ALL COURSES
 // =====================================
 
-app.get("/api/courses", async (req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const courses = await connectDB();
+    const db = await connectDB();
+const courses = db.collection("courses");
 
     const result = await courses.find().toArray();
-
-    // console.log("Courses fetched:", result.length);
 
     res.status(200).json(result);
   } catch (error) {
@@ -21,3 +25,5 @@ app.get("/api/courses", async (req, res) => {
     });
   }
 });
+
+module.exports = router;

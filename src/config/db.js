@@ -1,7 +1,16 @@
 // =====================================
 // MongoDB
 // =====================================
-const { MongoClient, ServerApiVersion } = require("mongodb");
+
+const dns = require("dns");
+
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
+const {
+  MongoClient,
+  ServerApiVersion,
+} = require("mongodb");
+
 const uri = process.env.MONGO_DB_URI;
 
 if (!uri) {
@@ -16,7 +25,7 @@ const client = new MongoClient(uri, {
   },
 });
 
-let courseCollections;
+let database;
 
 
 // =====================================
@@ -24,19 +33,30 @@ let courseCollections;
 // =====================================
 
 async function connectDB() {
-  if (courseCollections) {
-    return courseCollections;
+  if (database) {
+    return database;
   }
 
   await client.connect();
 
-  const database = client.db("nextSkill_Course_db");
+  database = client.db(
+    "nextSkill_Course_db"
+  );
 
-  courseCollections = database.collection("courses");
+  await client
+    .db("admin")
+    .command({ ping: 1 });
 
-  await client.db("admin").command({ ping: 1 });
+  console.log(
+    "MongoDB connected successfully!"
+  );
 
-  console.log("MongoDB connected successfully!");
-
-  return courseCollections;
+  return database;
 }
+
+
+// =====================================
+// Export
+// =====================================
+
+module.exports = connectDB;
